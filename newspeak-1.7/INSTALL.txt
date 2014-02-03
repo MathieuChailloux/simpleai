@@ -1,0 +1,32 @@
+C2Newspeak is a library to compile C to the intermediate language Newspeak.
+Newspeak is designed for the purpose of static analysis.
+
+- Do:
+    make
+  This will compile and copy to the bin/ directory the files:
+    newspeak.cmi	     newspeak compiled interface
+    newspeak.cma	     newspeak library for caml bytecode compiler
+    newspeak.a newspeak.cmxa newspeak library for caml native-code compiler
+    c2newspeak		     compiler from C to Newspeak
+    npkstats		     statistics on Newspeak files
+    npkstrip		     removes all functions not called from main
+    npksimplify		     performs some newspeak simplifications
+
+  This will produce the documentation in html in the doc/ directory. 
+  The documentation index file is index.html.
+
+- To compile a C file to Newspeak, use c2newspeak
+- To read and manipulate Newspeak files in your own project, use the libraries 
+  newspeak.cma (for bytecode) 
+  or newspeak.a and newspeak.cmxa (for native-code). (Note that newspeak.cmxa
+  needs the standard ocaml nums.cmxa)
+- Please refer to the documentation doc/index.html.
+
+If you find a bug, have a comment or a question, don't hesitate to visit
+http://www.penjili.org/ and submit a ticket, or directly send an email to
+charles.hymans(@)penjili.org.
+
+- Requirements:
+  - make
+  - Objective Caml
+  - patch

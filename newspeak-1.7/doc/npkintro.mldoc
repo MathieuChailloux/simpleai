@@ -1,0 +1,111 @@
+{R {i In the end the whole notion of goodness and badness will be covered by 
+   only six words -- in reality, only one word. Don't you see the beauty 
+   of that, Winston?
+
+{b Nineteen eighty-four}, George Orwell.}}
+
+{2 License }
+  C2Newspeak: compiles C code into Newspeak. Newspeak is a minimal language 
+  well-suited for static analysis.
+  Copyright (C) 2007  Charles Hymans, Olivier Levillain
+  
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
+  version 2.1 of the License, or (at your option) any later version.
+  
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+  
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+  Charles Hymans
+  EADS Innovation Works - SE/CS
+  12, rue Pasteur - BP 76 - 92152 Suresnes Cedex - France
+  email: charles.hymans(at)penjili.org
+
+  Olivier Levillain
+  email: olivier.levillain(at)penjili.org
+
+  Full text license available {{:lgpl.txt}here}.
+
+{2 Installation }
+{ol
+{- Do:
+    {v make v}}
+}
+  This will compile and copy to the bin/ directory the files:
+   - [newspeak.cmi]:	      newspeak compiled interface
+   - [newspeak.cma]:	      newspeak library for caml bytecode compiler
+   - [newspeak.a], [newspeak.cmxa]: 
+      newspeak library for caml native-code compiler
+   - [c2newspeak]:		      compiler from C to Newspeak
+   - [npk2bytesz]:		      converts all size into number of bytes
+   - [npkstats]:		      statistics on Newspeak files
+   - [npkstrip]:	      removes all functions not called from main
+   - [npksimplify]:	      performs some newspeak simplifications
+   - [fcntl.h]                standard C library for c2newspeak
+   - [stdarg.h]               standard C library for c2newspeak
+   - [stdio.h]                standard C library for c2newspeak
+   - [string.h]                standard C library for c2newspeak
+   - [unistd.h]                standard C library for c2newspeak
+
+  This will also produce the documentation in html format and copy it to 
+  the doc/ directory. 
+
+{2 Getting started }
+{ul
+{- To compile a C file to Newspeak, use {{:#c2newspeak}c2newspeak}.
+The file shoud have already been macro-expanded.
+(For instance with gcc use the option -E. You may also tell gcc to first
+in the bin/ directory to include library with option -I. 
+}
+{- To read and manipulate Newspeak programs in your own projects, use the 
+  functions provided in the library newspeak. 
+  Use files [newspeak.cma] (for bytecode) 
+  or [newspeak.cmxa] (for native-code). 
+  Don't forget to have the interface file [newspeak.cmi] visible from your 
+  compilation path.
+  Note that some functions in library newspeak use arbitrary precision integer
+  arithmetic from the num library so programs that use the newspeak must be
+  linked as follows:
+{ul
+ {- [ocamlc -I $(NEWSPEAK) nums.cma newspeak.cma \[files\]...]}
+ {- [ocamlopt -I $(NEWSPEAK) nums.cmxa newspeak.cmxa \[files\]...]}
+}
+  where [$(NEWSPEAK)] is the directory that contains file [newspeak.cmi].}
+{- The functions in the library are described there {!Newspeak}.}
+}
+{2 Newspeak tools }
+
+{3:c2newspeak c2newspeak}
+{3 npk2bytesz}
+{3 npkstats}
+{3 npkstrip}
+{3 npksimplify}
+
+{2:newspeak Newspeak language }
+{!modules: Newspeak}
+
+{2 Index }
+
+{!indexlist}
+
+{2 Authors }
+The main author is Charles Hymans with significant contributions from 
+Olivier Levillain. 
+The Newspeak language was designed by Charles Hymans. 
+The first version of the compiler c2newspeak compiler was entirely written by 
+Olivier Levillain.
+
+We thank Wenceslas Godard, Xavier Allamigeon,
+Jean-Loup Carre and Sarah Zennou for comments, discussions and bug reports. 
+
+{2 Questions, bug reports, comments }
+If you find a bug, have a comment or a question, don't hesitate to visit
+{{:http://www.penjili.org/}http://www.penjili.org/} and submit a ticket, 
+or directly send an email to charles.hymans(at)penjili.org.
