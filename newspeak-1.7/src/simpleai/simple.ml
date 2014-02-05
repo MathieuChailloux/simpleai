@@ -262,10 +262,8 @@ let mk_node name succs =
   
 
 let rec stmtkind_to_fg t prog_end next sk =
-  Format.printf "stmtkind\n";
   match sk with
   | Set (lv, e) ->
-    Format.printf "Set\n";
     mk_node "Set" [(Printf.sprintf "\"%s = %s\"" (string_of_lval lv) (string_of_exp e), next)]
   | If (e, b, []) ->
     mk_node "If"
@@ -296,9 +294,7 @@ let rec stmtkind_to_fg t prog_end next sk =
 	(Printf.sprintf "\"!%s\"" (string_of_assertion a), prog_end)]
 
 and blk_to_fg t prog_end next blk =
-  Format.printf "blk_to_fg\n";
   List.fold_left (fun acc (stmtkind, _) ->
-    Format.printf "iterating blk_to_fg\n";
     stmtkind_to_fg t prog_end acc stmtkind) next (List.rev blk)
 
 and find_main prog =
@@ -324,7 +320,6 @@ let fg_to_dot fg =
   Printf.sprintf "digraph toto {\n%s}" (fst (loop [] fg))
     
 let to_dot prog filename =
-  Format.printf "Calling to_dot\n";
   let fid = open_out filename in
   (* A compléter *)
   output_string fid (fg_to_dot (prog_to_fg prog));
