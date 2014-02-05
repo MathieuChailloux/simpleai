@@ -249,9 +249,85 @@ let string_of_blk = string_of_blk ""
 
 (* Generates a DOT based representation of the control flow graph of
    the program prog and writes it in the file names filename *)
-let to_dot prog filename = 
+
+type node = { mutable name : string; mutable succs : (string * node) list }
+exception WTF
+
+let get_new_stamp =
+  let cpt = ref 0 in
+  function () -> incr cpt; !cpt
+
+let mk_node name succs =
+  { name = name ^ (string_of_int (get_new_stamp ())); succs = succs }
+  
+
+let rec stmtkind_to_fg t prog_end next sk =
+  Format.printf "stmtkind\n";
+  match sk with
+  | Set (lv, e) ->
+    Format.printf "Set\n";
+    mk_node "Set" [(Printf.sprintf "\"%s = %s\"" (string_of_lval lv) (string_of_exp e), next)]
+  | If (e, b, []) ->
+    mk_node "If"
+      [ (Printf.sprintf "\"%s\"" (string_of_exp e), blk_to_fg t prog_end next b);
+	(Printf.sprintf "\"!%s\"" (string_of_exp e), next)]
+  | If (e, b1, b2) ->
+    mk_node "If"
+      [ (Printf.sprintf "\"%s\"" (string_of_exp e), blk_to_fg t prog_end next b1);
+	(Printf.sprintf "\"!%s\"" (string_of_exp e), blk_to_fg t prog_end next b2)]
+  | While (e, b) ->
+    let dummy_node = { name=""; succs=[] } in
+    let res_node = mk_node "While"
+      [ (Printf.sprintf "\"%s\"" (string_of_exp e), blk_to_fg t prog_end dummy_node b);
+	(Printf.sprintf "\"!%s\"" (string_of_exp e), next)]
+    in
+    dummy_node.name <- res_node.name; dummy_node.succs <- res_node.succs;
+    dummy_node
+  | Call (FunId fid) ->
+      begin try
+	let b = Hashtbl.find t.fundecs fid in
+	mk_node "Call" [(Printf.sprintf "\"%s\"" fid, blk_to_fg t prog_end next b)]
+      with 
+	| Not_found -> raise WTF
+      end
+  | Assert a ->
+    mk_node "Assert"
+      [ (Printf.sprintf "\"%s\"" (string_of_assertion a), next);
+	(Printf.sprintf "\"!%s\"" (string_of_assertion a), prog_end)]
+
+and blk_to_fg t prog_end next blk =
+  Format.printf "blk_to_fg\n";
+  List.fold_left (fun acc (stmtkind, _) ->
+    Format.printf "iterating blk_to_fg\n";
+    stmtkind_to_fg t prog_end acc stmtkind) next (List.rev blk)
+
+and find_main prog =
+  try Hashtbl.find prog.fundecs "main" with Not_found -> raise WTF
+
+and prog_to_fg prog =
+  let prog_end = mk_node "End" [] in
+  let flowgraph = blk_to_fg prog prog_end prog_end (find_main prog) in
+  mk_node "Start" [ ("vamos", flowgraph) ]
+  
+let fg_to_dot fg =
+  let rec loop treated_nodes fg =
+    if List.mem fg.name treated_nodes then
+      ("", treated_nodes)
+    else
+      let res = List.fold_left (fun acc (lbl, succ) ->
+	Printf.sprintf "%s%s -> %s [label=%s]\n" acc fg.name succ.name lbl) "" fg.succs in
+      let treated_nodes = fg.name :: treated_nodes in
+      List.fold_left (fun (acc, treated_nodes) (_, succ) ->
+	let rec_acc, rec_treated_nodes = loop treated_nodes succ in
+	(acc ^ rec_acc, rec_treated_nodes)) (res, treated_nodes) fg.succs
+  in
+  Printf.sprintf "digraph toto {\n%s}" (fst (loop [] fg))
+    
+let to_dot prog filename =
+  Format.printf "Calling to_dot\n";
   let fid = open_out filename in
   (* A compléter *)
+  output_string fid (fg_to_dot (prog_to_fg prog));
   close_out fid
 
 
