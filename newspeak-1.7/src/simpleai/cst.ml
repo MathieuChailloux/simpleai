@@ -53,28 +53,58 @@ let neg x =
     | Top -> Top
 
 
-let add x y =
+let apply_binop op32 op64 x y =
   match (x, y) with
       (Val x, Val y) -> 
-	let z = Int32.add x y in
-         if (Int64.compare (Int64.add (Int64.of_int32 x) (Int64.of_int32 y)) (Int64.of_int32 z) != 0) then Top
+	let z = op32 x y in
+          if (Int64.compare (op64 (Int64.of_int32 x) (Int64.of_int32 y)) (Int64.of_int32 z) != 0) then Top
 	  else Val z
     | _ -> Top
 
-let is_safe_add x y =
+let add = apply_binop Int32.add Int64.add
+
+let sub = apply_binop Int32.sub Int64.sub
+
+let mul = apply_binop Int32.mul Int64.mul
+
+let div = apply_binop Int32.div Int64.div
+
+let rem = apply_binop Int32.rem Int64.rem
+
+let is_safe_binop op32 op64 x y =
   match (x, y) with
       (Val x, Val y) ->
-	let z = Int32.add x y in
-         (Int64.compare (Int64.add (Int64.of_int32 x) (Int64.of_int32 y)) (Int64.of_int32 z) == 0) 
+	let z = op32 x y in
+         (Int64.compare (op64 (Int64.of_int32 x) (Int64.of_int32 y)) (Int64.of_int32 z) == 0) 
     | _ -> false
+
+let is_safe_add = is_safe_binop Int32.add Int64.add
+
+let is_safe_sub = is_safe_binop Int32.sub Int64.sub
+
+let is_safe_mul = is_safe_binop Int32.mul Int64.mul
+
+let is_safe_div = is_safe_binop Int32.div Int64.div
+
+let is_safe_mod = is_safe_binop Int32.rem Int64.rem
 
 let implies _ = false
 
 (* Restricts the value x to make the condition 
    c op x true *)
 let guard op c x =
-  match (op, c, x) with
-      (LTE, Val i, Val x) when Int32.compare i x > 0 -> raise Emptyset
+  match c, x with
+    | Val cval, Val xval ->
+	let val_cmp = Int32.compare cval xval in
+	let cond = match op with
+	  | LTE -> val_cmp <= 0
+	  | EQ -> val_cmp = 0
+	  | GT -> val_cmp > 0
+	  | LT -> val_cmp < 0
+	  | NEQ -> val_cmp <> 0
+	  | GTE -> val_cmp >= 0
+	in
+	  if cond then x else raise Emptyset
     | _ -> x
 
 let to_string v = 
