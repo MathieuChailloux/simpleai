@@ -46,6 +46,8 @@ let join x y =
       (Val x, Val y) when x = y -> Val x
     | _ -> Top
 
+let widen = join
+
 let neg x =
   match x with
       Val i when i = Int32.zero -> Val Int32.one
@@ -88,7 +90,10 @@ let is_safe_div = is_safe_binop Int32.div Int64.div
 
 let is_safe_mod = is_safe_binop Int32.rem Int64.rem
 
-let implies _ = false
+let implies = function
+  | Val i1, Simple.Equals, i2 -> Int32.compare i1 i2 = 0
+  | Val i1, Simple.IsLess, i2 -> Int32.compare i1 i2 < 0
+  | _ -> false
 
 (* Restricts the value x to make the condition 
    c op x true *)

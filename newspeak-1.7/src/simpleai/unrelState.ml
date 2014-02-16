@@ -40,6 +40,7 @@ sig
   val singleton: Int32.t -> t
   val of_bounds: (Int32.t * Int32.t) -> t
   val join: t -> t -> t
+  val widen : t -> t -> t
   val contains: t -> t -> bool
   val implies: (t * Simple.cmp * Int32.t) -> bool
   val neg: t -> t
@@ -104,6 +105,19 @@ struct
 	  let join_info x v1 =
 	    let v2 = read s2 x in
 	    let v = Val.join v1 v2 in
+	      res := Map.add x v !res
+	  in
+	    Map.iter join_info s1;
+	    Some !res
+
+  let widen s1 s2 =
+    match s1, s2 with
+    | None, s | s, None -> s
+    | Some s1, Some s2 ->
+      let res = ref Map.empty in
+	  let join_info x v1 =
+	    let v2 = read s2 x in
+	    let v = Val.widen v1 v2 in
 	      res := Map.add x v !res
 	  in
 	    Map.iter join_info s1;
