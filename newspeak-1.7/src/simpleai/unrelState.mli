@@ -27,6 +27,7 @@ exception Emptyset
 exception Unknown
 
 type bop = EQ | GT | LT | NEQ | LTE | GTE
+val bop_to_string : bop -> string
 
 module type Data =
 sig

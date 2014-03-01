@@ -21,7 +21,7 @@ void main()
   r=1;
   while (i<=n)
   {
-	r=r*i;
+    r=r*i;
     i++;
   }
 

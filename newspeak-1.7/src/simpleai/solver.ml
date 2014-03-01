@@ -28,96 +28,116 @@
 
 open Simple
 
-module State = UnrelState.Make(Cst)
+module State = UnrelState.Make(Interval)
 
 let add_globals globals s =
   List.fold_left (fun s' x -> State.add_var x s') s globals
-  
-
-let fixpoint f s =
-  let rec loop s =
-    let new_s = f s in
-    if State.contains s new_s then
-      s
+    
+let unroll_loop loc e body =
+  let rec loop m =
+    if m = 0 then
+      While (e, body)
     else
-      loop (State.widen s new_s)
+      If (e, body @ [(loop (m - 1), loc)], [])
   in
-  loop s
+  loop !Context.unroll_number
+
+  let fixpoint f s =
+    let rec loop s =
+      let new_s = f s in
+      if State.contains s new_s then
+	s
+      else
+	loop (State.widen s new_s)
+    in
+    loop s
 
 let check_exp loc e s =
   let rec check e =
     match e with
-	UnOp (_, e) -> check e
-      | BinOp (op, e1, e2) ->
-	  check e1;
-	  check e2;
-	  if not (State.is_safe_binop s (op, e1, e2)) then begin
-	    print_endline (Simple.string_of_loc loc^": "
-			   ^"potential invalid operation: "
-			   ^(Simple.string_of_binop op))
-	  end
-      | _ -> ()
+      UnOp (_, e) -> check e
+    | BinOp (op, e1, e2) ->
+      check e1;
+      check e2;
+      if not (State.is_safe_binop s (op, e1, e2)) then begin
+	print_endline (Simple.string_of_loc loc^": "
+		       ^"potential invalid operation: "
+		       ^(Simple.string_of_binop op))
+      end
+    | _ -> ()
   in
-    check e
+  check e
 
 let compute prog = 
   let rec compute_blk x s =
     match x with
-	x::tl -> 
-	  let s = compute_stmt x s in
-	    compute_blk tl s
-      | [] -> s
-	  
+      x::tl -> 
+	let s = compute_stmt x s in
+	compute_blk tl s
+    | [] -> s
+      
   and compute_stmt (x, loc) s =
     print_endline (Simple.string_of_loc loc^": "^State.to_string s);
     compute_stmtkind loc x s
       
   and compute_stmtkind loc x s =
     match x with
-	Set (lv, e) -> 
-	  check_exp loc e s;
-	  State.assign lv e s
-      | Call FunId f -> 
-	  let body = 
-	    try Hashtbl.find prog.fundecs f
-	    with Not_found -> 
-	      invalid_arg ("Fixpoint.compute_stmtkind: unknown function "^f)
-	  in
-	    print_endline ("Call function: "^f);
-	    let s = compute_blk body s in
-	      print_endline ("Return from function: "^f);
-	      s
-      | If (e, br1, br2) -> 
-	  check_exp loc e s;
-	  let s1 = State.guard e s in
-	  let s2 = State.guard (UnOp (Not, e)) s in
-	  let s1 = compute_blk br1 s1 in
-	  let s2 = compute_blk br2 s2 in
-	    State.join s1 s2
-      | While (e, body) ->
-	  let f s =
-	    check_exp loc e s;
-	    let s = State.guard e s in
-	      compute_blk body s
-	  in
-	  let s = fixpoint f s in
-	  let s = State.guard (UnOp (Not, e)) s in
-	    s
-      | Assert a -> 
-	  if not (State.implies s a) 
-	  then print_endline (Simple.string_of_loc loc^": assertion violation");
+      Set (lv, e) -> 
+	check_exp loc e s;
+	State.assign lv e s
+    | Call FunId f -> 
+      let body = 
+	try Hashtbl.find prog.fundecs f
+	with Not_found -> 
+	  invalid_arg ("Fixpoint.compute_stmtkind: unknown function "^f)
+      in
+      print_endline ("Call function: "^f);
+      let s = compute_blk body s in
+      print_endline ("Return from function: "^f);
+      s
+    | If (e, br1, br2) -> 
+      Printf.printf "If %s\n" (string_of_exp e);
+      check_exp loc e s;
+      let s1 = State.guard e s in
+      let s2 = State.guard (UnOp (Not, e)) s in
+      let s1 = compute_blk br1 s1 in
+      let s2 = compute_blk br2 s2 in
+      State.join s1 s2
+    | While (e, body) ->
+
+      (* loop unrolling *)
+      if !Context.unroll_mode then
+	begin
+	  Context.unroll_mode := false;
+	  let new_exp = unroll_loop loc e body in
+	  let s = compute_stmtkind loc new_exp s in
+	  Context.unroll_mode := true;
 	  s
+	end
+      else
+	let f s =
+	  check_exp loc e s;
+	  let s = State.guard e s in
+	  compute_blk body s
+	in
+	let s = fixpoint f s in
+	let s = State.guard (UnOp (Not, e)) s in
+	s
+    | Assert a -> 
+      if not (State.implies s a) 
+      then print_endline (Simple.string_of_loc loc^": assertion violation");
+      s
   in
-    
-    
-    print_endline "Analysis starts";
-    let s = State.universe in
-    let s = add_globals prog.globals s in
-    let s = compute_blk prog.init s in
-    let body =
-      try Hashtbl.find prog.fundecs "main"
-      with Not_found -> invalid_arg "Fixpoint.compute: no main function"
-    in
-    let s = compute_blk body s in
-      print_endline ("Final state: "^State.to_string s)
+  
+  
+  print_endline "Analysis starts";
+  let s = State.universe in
+  let s = add_globals prog.globals s in
+  let s = compute_blk prog.init s in
+  let body =
+    try Hashtbl.find prog.fundecs "main"
+    with Not_found -> invalid_arg "Fixpoint.compute: no main function"
+  in
+  let s = compute_blk body s in
+  print_endline ("Final state: "^State.to_string s)
 	

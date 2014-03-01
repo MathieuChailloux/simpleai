@@ -19,7 +19,7 @@ void main() {
   x=x-2;
   
   if (x < 0)
-	y=-x;	
+    y=-x;
   else
     y = x;
 

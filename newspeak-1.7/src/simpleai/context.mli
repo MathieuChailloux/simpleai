@@ -33,3 +33,6 @@ val print_err: string -> unit
 
 val dot_output : bool ref
 val dot_filename : string ref
+
+val unroll_mode : bool ref
+val unroll_number : int ref

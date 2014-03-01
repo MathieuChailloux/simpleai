@@ -31,6 +31,9 @@ exception Emptyset
 exception Unknown
 
 type bop = EQ | GT | LT | NEQ | LTE | GTE
+let bop_to_string = function
+  | EQ -> "EQ" | GT -> "GT" | LT -> "LT"
+  | NEQ -> "NEQ" | LTE -> "LTE" | GTE -> "GTE"
 
 module type Data =
 sig
@@ -187,16 +190,17 @@ struct
       | Some s -> 
 	  try
 	    let (x, op, c) = exp_to_eq e s in
+	    (*Printf.printf "Restricting %s\n" x;*)
 	    let v = read s x in
 	    let v = Val.guard op c v in
 	      Some (Map.add x v s)
 	  with Unknown -> Some s
 	    | Emptyset -> None
 
-  let implies s (lv, cmp, c) = 
+  let implies s (lv, cmp, c) =
     match s with
 	None -> true
-      | Some s -> 
+      | Some s ->
 	  let x = eval_lval lv in
 	  let v = read s x in
 	  let c =
@@ -204,7 +208,7 @@ struct
 	      CInt i -> i
 	  in
 	    Val.implies (v, cmp, c)
-	      
+
   let is_safe_binop s (op, e1, e2) = 
     match s with
 	None -> true

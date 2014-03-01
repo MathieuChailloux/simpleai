@@ -18,14 +18,14 @@ void main() {
   /*!npk x between 1 and 5 */
   /*!npk y between 2 and 10 */
 
-	
-	if ( x < y)
-		z=x*x;
-	else
-		z=y*y;
-	
-	if (z<=x*y)
-		t=1;
-	else 
-		t=0;
+
+  if ( x < y)
+    z=x*x;
+  else
+    z=y*y;
+
+  if (z<=x*y)
+    t=1;
+  else
+    t=0;
 }

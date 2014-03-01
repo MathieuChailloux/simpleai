@@ -45,3 +45,6 @@ let print_err msg =
 
 let dot_output = ref false
 let dot_filename = ref ""
+
+let unroll_mode = ref false
+let unroll_number = ref 0
