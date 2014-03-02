@@ -48,3 +48,6 @@ let dot_filename = ref ""
 
 let unroll_mode = ref false
 let unroll_number = ref 0
+
+let delayed_widening_mode = ref false
+let delayed_widening_number = ref 0

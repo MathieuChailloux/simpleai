@@ -28,6 +28,6 @@ void main() {
   while (l > 1000)
     l = l+k;
   while (m > 1)
-    m = m-l;   
+    m = m-l;
 }
 

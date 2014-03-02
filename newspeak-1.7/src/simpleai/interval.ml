@@ -11,6 +11,8 @@ let gt x y = Int32.compare x y > 0
 let gte x y = Int32.compare x y >= 0
 let min x y = if lt x y then x else y
 let max x y = if gt x y then x else y
+let min64 x y = if Int64.compare x y < 0 then x else y
+let max64 x y = if Int64.compare x y > 0 then x else y
 let lt_min32 x64 =
   Int64.compare x64 (Int64.of_int32 Int32.min_int) < 0
 let gt_max32 x64 =
@@ -23,7 +25,10 @@ let to_string = function
 let normalize v =
   match v with
   | Top -> Top
-  | Val (x, y) -> if x = Int32.min_int && y = Int32.max_int then Top else v
+  | Val (x, y) ->
+    assert (lte x y);
+    if x = Int32.min_int && y = Int32.max_int then Top
+    else v
 
 let universe = Top
 
@@ -44,7 +49,6 @@ let join x y =
   | _ -> Top
 
 let widen x y =
-  Printf.printf "WIDEN\n";
   match x, y with
   | Val (a, b), Val (c, d) ->
     let x = if lte a c then a else Int32.min_int in
@@ -58,7 +62,6 @@ let implies = function
   | _ -> false
 
 let neg v =
-  Printf.printf "NEG\n";
   let zero = Int32.zero in
   match v with
   | Val (x, y) ->
@@ -68,8 +71,16 @@ let neg v =
   | _ -> Top
       
 
-let match_val_bounds b1 b2 x32 y32 =
-    match b1, b2 with
+let match_val_bounds x64 y64 =
+  (* both are more than max *)
+  if gt_max32 x64 then
+    Top
+  (* both are less than min *)
+  else if lt_min32 y64 then
+    Top
+  else
+    let x32, y32 = Int64.to_int32 x64, Int64.to_int32 y64 in
+    match lt_min32 x64, gt_max32 y64 with
     | true, true -> Top
     | true, false -> normalize (Val (Int32.min_int, y32))
     | false, true -> normalize (Val (x32, Int32.max_int))
@@ -80,9 +91,7 @@ let add x y =
     | Val (a, b), Val (c, d) ->
 	let x64 = Int64.add (Int64.of_int32 a) (Int64.of_int32 c) in
 	let y64 = Int64.add (Int64.of_int32 b) (Int64.of_int32 d) in
-	let x32 = Int32.add a c in
-	let y32 = Int32.add b d in
-	  match_val_bounds (lt_min32 x64) (gt_max32 y64) x32 y32
+	match_val_bounds x64 y64
     | _ -> Top
 
 let sub x y =
@@ -90,9 +99,7 @@ let sub x y =
     | Val (a, b), Val (c, d) ->
 	let x64 = Int64.sub (Int64.of_int32 a) (Int64.of_int32 d) in
 	let y64 = Int64.sub (Int64.of_int32 b) (Int64.of_int32 c) in
-	let x32 = Int32.sub a d in
-	let y32 = Int32.sub b c in
-	  match_val_bounds (lt_min32 x64) (gt_max32 y64) x32 y32
+	match_val_bounds x64 y64
     | _ -> Top
 
 let cartesian_product op (a, b) (c, d) =
@@ -104,55 +111,46 @@ let contains_zero = function
 
 let mul x y =
   match x, y with
-    | Val (a, b), Val (c, d) ->
-      Printf.printf "%s * %s\n" (to_string x) (to_string y);
-      let my_mul x y = Int64.mul (Int64.of_int32 x) (Int64.of_int32 y) in
-      let prod_cart32 = [Int32.mul a c; Int32.mul a d; Int32.mul b c; Int32.mul b d] in
-      let prod_cart64 = [my_mul a c; my_mul a d; my_mul b c; my_mul b d] in
-      let exists_min_int = List.exists lt_min32 prod_cart64 in
-      let exists_max_int = List.exists gt_max32 prod_cart64 in
-      let min32 = List.fold_right min prod_cart32 Int32.max_int in
-      let max32 = List.fold_right max prod_cart32 Int32.min_int in
-      let res = match_val_bounds exists_min_int exists_max_int min32 max32 in
-      Printf.printf "res of mul = %s\n" (to_string res);
-      res
-    | _ -> Top
+  | Val (a, b), Val (c, d) ->
+    let my_mul x y = Int64.mul (Int64.of_int32 x) (Int64.of_int32 y) in
+    let prod_cart64 = cartesian_product my_mul (a, b) (c, d) in
+    let min64 = List.fold_right min64 prod_cart64 Int64.max_int in
+    let max64 = List.fold_right max64 prod_cart64 Int64.min_int in
+    match_val_bounds min64 max64
+  | _ -> Top
 
-let div x y =
+let rec div x y =
   match x, y with
-    | Val (a, b), Val (c, d) ->
-	if contains_zero y then
-	  Top
-	else
-	  begin
-	    let my_div x y = Int64.div (Int64.of_int32 x) (Int64.of_int32 y) in
-	    let prod_cart32 = [Int32.div a c; Int32.div a d; Int32.div b c; Int32.div b d] in
-	    let prod_cart64 = [my_div a c; my_div a d; my_div b c; my_div b d] in
-	    let exists_min_int = List.exists lt_min32 prod_cart64 in
-	    let exists_max_int = List.exists gt_max32 prod_cart64 in
-	    let min32 = List.fold_right min prod_cart32 Int32.max_int in
-	    let max32 = List.fold_right max prod_cart32 Int32.min_int in
-	      match_val_bounds exists_min_int exists_max_int min32 max32
-	  end
-    | _ -> Top
+  | Val (a, b), Val (c, d) ->
+    if contains_zero y then
+	  (* dividing x by y without 0 *)
+      if lt c Int32.zero || gt d Int32.zero then
+	join (div x (Val (c, max c Int32.minus_one))) (div x (Val (min d Int32.one, d)))
+      else
+	Top
+    else
+      let my_div x y = Int64.div (Int64.of_int32 x) (Int64.of_int32 y) in
+      let prod_cart64 = cartesian_product my_div (a, b) (c, d) in
+      let min64 = List.fold_right min64 prod_cart64 Int64.max_int in
+      let max64 = List.fold_right max64 prod_cart64 Int64.min_int in
+      match_val_bounds min64 max64
+  | _ -> Top
 
-let rem x y =
+let rec rem x y =
   match x, y with
-    | Val (a, b), Val (c, d) ->
-	if contains_zero y then
-	  Top
-	else
-	  begin
-	    let my_rem x y = Int64.rem (Int64.of_int32 x) (Int64.of_int32 y) in
-	    let prod_cart32 = [Int32.rem a c; Int32.rem a d; Int32.rem b c; Int32.rem b d] in
-	    let prod_cart64 = [my_rem a c; my_rem a d; my_rem b c; my_rem b d] in
-	    let exists_min_int = List.exists lt_min32 prod_cart64 in
-	    let exists_max_int = List.exists gt_max32 prod_cart64 in
-	    let min32 = List.fold_right min prod_cart32 Int32.max_int in
-	    let max32 = List.fold_right max prod_cart32 Int32.min_int in
-	      match_val_bounds exists_min_int exists_max_int min32 max32
-	  end
-    | _ -> Top
+  | Val (a, b), Val (c, d) ->
+    if contains_zero y then
+      if lt c Int32.zero || gt d Int32.zero then
+	join (rem x (Val (c, max c Int32.minus_one))) (rem x (Val (min d Int32.one, d)))
+      else
+	Top
+    else
+      let my_rem x y = Int64.rem (Int64.of_int32 x) (Int64.of_int32 y) in
+      let prod_cart64 = cartesian_product my_rem (a, b) (c, d) in
+      let min64 = List.fold_right min64 prod_cart64 Int64.max_int in
+      let max64 = List.fold_right max64 prod_cart64 Int64.min_int in
+      match_val_bounds min64 max64
+  | _ -> Top
 
 (* is_safe_val : t -> bool *)
 let is_safe_binop ?is_safe_val op32 op64 x y =
@@ -160,6 +158,7 @@ let is_safe_binop ?is_safe_val op32 op64 x y =
   match (x, y) with
     | Val (a, b), Val (c, d) ->
 	let to_64 x32 y32 = op64 (Int64.of_int32 x32) (Int64.of_int32 y32) in
+	(* we must check val first (may contains zero) *)
 	  is_safe_val y 
 	  &&
 	    List.for_all2
@@ -180,7 +179,6 @@ let is_safe_mod = is_safe_binop ~is_safe_val:(fun x -> not (contains_zero x)) In
 
 	  
 let guard op cond x =
-  (*Printf.printf "guard %s %s %s\n" (to_string cond) (bop_to_string op) (to_string x);*)
   let one = Int32.one in
   normalize (
   match cond, op, x with

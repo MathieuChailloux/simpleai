@@ -10,6 +10,7 @@
 /* Dans ces exemples, des techniques de widening intelligentes     */
 /* seront necessaires pour obtenir des resultats precis.           */
 /*******************************************************************/
+/* --unroll 4 */
 
 int i, j;
 

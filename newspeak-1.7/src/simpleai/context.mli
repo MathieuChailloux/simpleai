@@ -36,3 +36,6 @@ val dot_filename : string ref
 
 val unroll_mode : bool ref
 val unroll_number : int ref
+
+val delayed_widening_mode : bool ref
+val delayed_widening_number : int ref

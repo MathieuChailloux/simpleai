@@ -23,4 +23,4 @@ dot: $(DOT_FILES) $(NPK_FILES)
 ps: $(PS_FILES) $(DOT_FILES)
 
 clean:
-	rm *.no *.npk *.dot *.ps
+	rm *.no *.npk *.dot *.ps *~

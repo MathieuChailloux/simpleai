@@ -33,24 +33,48 @@ module State = UnrelState.Make(Interval)
 let add_globals globals s =
   List.fold_left (fun s' x -> State.add_var x s') s globals
     
-let unroll_loop loc e body =
+let unroll_loop loc cond body =
   let rec loop m =
     if m = 0 then
-      While (e, body)
+      While (cond, body)
     else
-      If (e, body @ [(loop (m - 1), loc)], [])
+      If (cond, body @ [(loop (m - 1), loc)], [])
   in
   loop !Context.unroll_number
 
-  let fixpoint f s =
-    let rec loop s =
-      let new_s = f s in
-      if State.contains s new_s then
+let rec unroll_stmt prog (stmtk, loc) =
+  match stmtk with
+  | Set _ -> stmtk, loc
+  | If (cond, b1, b2) ->
+    If (cond, unroll_blk prog b1, unroll_blk prog b2), loc
+  | While (cond, b) ->
+    unroll_loop loc cond (unroll_blk prog b), loc
+  | Call (FunId f) ->
+    Hashtbl.replace
+      prog.fundecs f
+      (unroll_blk prog (Hashtbl.find prog.fundecs f));
+    stmtk, loc
+  | Assert _ -> stmtk, loc
+    
+
+and unroll_blk prog blk = List.map (unroll_stmt prog) blk
+  
+
+let fixpoint f s =
+  let rec loop s n =
+    let new_s = f s in
+    if State.contains s new_s then
+      begin
+	Printf.printf "Fixpoint found : %s\n" (State.to_string s);
 	s
-      else
-	loop (State.widen s new_s)
-    in
-    loop s
+      end
+    else if n > 0 then
+	(* Delayed widening *)
+      loop (State.join s new_s) (n - 1)
+    else
+      loop (State.widen s new_s) n
+  in
+  loop s !Context.delayed_widening_number
 
 let check_exp loc e s =
   let rec check e =
@@ -96,33 +120,25 @@ let compute prog =
       print_endline ("Return from function: "^f);
       s
     | If (e, br1, br2) -> 
-      Printf.printf "If %s\n" (string_of_exp e);
+      (*Printf.printf "If %s\n" (string_of_exp e);*)
       check_exp loc e s;
+      (*Printf.printf "If with initial state %s\n" (State.to_string s);*)
       let s1 = State.guard e s in
       let s2 = State.guard (UnOp (Not, e)) s in
+      (*Printf.printf "If guarded with s2 = %s\n" (State.to_string s2);*)
       let s1 = compute_blk br1 s1 in
       let s2 = compute_blk br2 s2 in
+      (*Printf.printf "If computed with\n  s1 = %s\n  s2 = %s\n" (State.to_string s1) (State.to_string s2);*)
       State.join s1 s2
     | While (e, body) ->
-
-      (* loop unrolling *)
-      if !Context.unroll_mode then
-	begin
-	  Context.unroll_mode := false;
-	  let new_exp = unroll_loop loc e body in
-	  let s = compute_stmtkind loc new_exp s in
-	  Context.unroll_mode := true;
-	  s
-	end
-      else
-	let f s =
-	  check_exp loc e s;
-	  let s = State.guard e s in
-	  compute_blk body s
-	in
-	let s = fixpoint f s in
-	let s = State.guard (UnOp (Not, e)) s in
-	s
+      let f s =
+	check_exp loc e s;
+	let s = State.guard e s in
+	compute_blk body s
+      in
+      let s = fixpoint f s in
+      let s = State.guard (UnOp (Not, e)) s in
+      s
     | Assert a -> 
       if not (State.implies s a) 
       then print_endline (Simple.string_of_loc loc^": assertion violation");
@@ -138,6 +154,8 @@ let compute prog =
     try Hashtbl.find prog.fundecs "main"
     with Not_found -> invalid_arg "Fixpoint.compute: no main function"
   in
+  let body = if !Context.unroll_mode then unroll_blk prog body else body in
+  Printf.printf "Unrolled body :\n%s\n" (string_of_blk body);
   let s = compute_blk body s in
   print_endline ("Final state: "^State.to_string s)
 	
