@@ -29,6 +29,7 @@
 open Simple
 
 module State = UnrelState.Make(Interval)
+let state_pool = State.t list
 
 let add_globals globals s =
   List.fold_left (fun s' x -> State.add_var x s') s globals
@@ -93,69 +94,73 @@ let check_exp loc e s =
   check e
 
 let compute prog = 
-  let rec compute_blk x s =
+  let rec compute_blk x sp =
     match x with
       x::tl -> 
-	let s = compute_stmt x s in
-	compute_blk tl s
-    | [] -> s
+	let sp = compute_stmt x sp in
+	compute_blk tl sp
+    | [] -> sp
       
-  and compute_stmt (x, loc) s =
-    print_endline (Simple.string_of_loc loc^": "^State.to_string s);
-    compute_stmtkind loc x s
+  and compute_stmt (x, loc) sp =
+    Printf.printf "%s: %s\n"
+      (Simple.string_of_loc loc)
+      (String.concat "\n   " (List.map State.to_string sp));
+    compute_stmtkind loc x sp
       
-  and compute_stmtkind loc x s =
+  and compute_stmtkind loc x sp =
     match x with
-      Set (lv, e) -> 
-	check_exp loc e s;
-	State.assign lv e s
-    | Call FunId f -> 
-      let body = 
-	try Hashtbl.find prog.fundecs f
-	with Not_found -> 
-	  invalid_arg ("Fixpoint.compute_stmtkind: unknown function "^f)
-      in
-      print_endline ("Call function: "^f);
-      let s = compute_blk body s in
-      print_endline ("Return from function: "^f);
-      s
-    | If (e, br1, br2) -> 
-      (*Printf.printf "If %s\n" (string_of_exp e);*)
-      check_exp loc e s;
-      (*Printf.printf "If with initial state %s\n" (State.to_string s);*)
-      let s1 = State.guard e s in
-      let s2 = State.guard (UnOp (Not, e)) s in
-      (*Printf.printf "If guarded with s2 = %s\n" (State.to_string s2);*)
-      let s1 = compute_blk br1 s1 in
-      let s2 = compute_blk br2 s2 in
-      (*Printf.printf "If computed with\n  s1 = %s\n  s2 = %s\n" (State.to_string s1) (State.to_string s2);*)
-      State.join s1 s2
-    | While (e, body) ->
-      let f s =
-	check_exp loc e s;
-	let s = State.guard e s in
-	compute_blk body s
-      in
-      let s = fixpoint f s in
-      let s = State.guard (UnOp (Not, e)) s in
-      s
-    | Assert a -> 
-      if not (State.implies s a) 
-      then print_endline (Simple.string_of_loc loc^": assertion violation");
-      s
+      |	Set (lv, e) -> 
+	  List.iter (check_exp loc e) sp;
+	  List.map (State.assign lv e) sp
+      | Call FunId f -> 
+	  let body = 
+	    try Hashtbl.find prog.fundecs f
+	    with Not_found -> 
+	      invalid_arg ("Fixpoint.compute_stmtkind: unknown function "^f)
+	  in
+	    print_endline ("Call function: "^f);
+	    let sp = compute_blk body sp in
+	      print_endline ("Return from function: "^f);
+	      sp
+      | If (e, br1, br2) -> 
+	  (*Printf.printf "If %s\n" (string_of_exp e);*)
+	  List.iter (check_exp loc e) sp;
+	  (*Printf.printf "If with initial state %s\n" (State.to_string s);*)
+	  let sp1 = List.map (State.guard e) sp in
+	  let sp2 = List.map (State.guard (UnOp (Not, e))) sp in
+	    (*Printf.printf "If guarded with s2 = %s\n" (State.to_string s2);*)
+	  let sp1 = compute_blk br1 sp1 in
+	  let sp2 = compute_blk br2 sp2 in
+	    (*Printf.printf "If computed with\n  s1 = %s\n  s2 = %s\n" (State.to_string s1) (State.to_string s2);*)
+	    (*State.join s1 s2*)
+	    sp1 @ sp2
+      | While (e, body) ->
+	  let f s =
+	    check_exp loc e s;
+	    let s = State.guard e s in
+	      compute_blk body s
+	  in
+	  let sp = List.map (fixpoint f) sp in
+	  let sp = List.map (State.guard (UnOp (Not, e))) sp in
+	    sp
+      | Assert a -> 
+	  if not (List.forall (fun s -> State.implies s a) sp)
+	  then print_endline (Simple.string_of_loc loc^": assertion violation");
+	  sp
   in
-  
-  
-  print_endline "Analysis starts";
-  let s = State.universe in
+    
+    
+    print_endline "Analysis starts";
+    let s = State.universe in
   let s = add_globals prog.globals s in
-  let s = compute_blk prog.init s in
+  let sp = compute_blk prog.init [s] in
   let body =
     try Hashtbl.find prog.fundecs "main"
     with Not_found -> invalid_arg "Fixpoint.compute: no main function"
   in
   let body = if !Context.unroll_mode then unroll_blk prog body else body in
   Printf.printf "Unrolled body :\n%s\n" (string_of_blk body);
-  let s = compute_blk body s in
-  print_endline ("Final state: "^State.to_string s)
+  let sp = compute_blk body sp in
+  Printf.printf "Final states :\n%s"
+    (String.concat "\n  "  (List.map State.to_string sp))
 	
