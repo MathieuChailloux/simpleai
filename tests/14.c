@@ -10,7 +10,7 @@
 /* Dans ces exemples, des techniques de widening intelligentes     */
 /* seront necessaires pour obtenir des resultats precis.           */
 /*******************************************************************/
-/* --unroll 4 */
+/* --unroll m --delay n avec m + n = 4 */
 
 int i, j;
 

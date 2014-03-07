@@ -49,12 +49,16 @@ let join x y =
   | _ -> Top
 
 let widen x y =
+  let res =
   match x, y with
   | Val (a, b), Val (c, d) ->
     let x = if lte a c then a else Int32.min_int in
     let y = if gte b d then b else Int32.max_int in
     normalize (Val (x, y))
   | _ -> Top
+  in
+  (*Printf.printf "Interval widening %s\nand %s\n= %s\n" (to_string x) (to_string y) (to_string res);*)
+  res
 
 let implies = function
   | Val (x, y), Simple.Equals, i32 -> x = i32 && y = i32
@@ -209,4 +213,5 @@ let guard op cond x =
     Val (Int32.min_int, Int32.sub b one)
   | Val (a, _), LT, Top ->
     Val (Int32.add a one, Int32.max_int)
+  | _, EQ, Top -> cond
   | _ -> x)

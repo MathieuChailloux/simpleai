@@ -1,3 +1,5 @@
+/* --unroll 1 */
+
 int x, y, i;
 
 void main() {

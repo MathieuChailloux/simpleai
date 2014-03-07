@@ -39,3 +39,5 @@ val unroll_number : int ref
 
 val delayed_widening_mode : bool ref
 val delayed_widening_number : int ref
+
+val final_print : bool ref
