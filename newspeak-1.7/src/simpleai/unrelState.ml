@@ -63,7 +63,7 @@ end
 
 
 
-module Make(Val: Data) =
+(*module Make(Val: Data) =
 struct
   (* None is emptyset *)
   type t = Val.t Map.t option
@@ -226,12 +226,12 @@ struct
       | Eq | Gt -> true
 	
 
-end
+end*)
 
 
 
 
-(*module Make(Val: Data) =
+module Make(Val: Data) =
 struct
   (* None is emptyset *)
   type t = Val.t Map.t list
@@ -383,4 +383,4 @@ struct
     ) sl
 	      
 
-end*)
+end
