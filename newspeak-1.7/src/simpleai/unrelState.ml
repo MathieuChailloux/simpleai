@@ -63,7 +63,7 @@ end
 
 
 
-(*module Make(Val: Data) =
+module Make(Val: Data) =
 struct
   (* None is emptyset *)
   type t = Val.t Map.t option
@@ -75,7 +75,7 @@ struct
       let res = ref "" in
       let string_of_info x v =
 	let v = Val.to_string v in
-	res := !res^x^" -> "^v^" "
+	res := Printf.sprintf "%s\n%s -> %s" !res x v
       in
       Map.iter string_of_info s;
       !res
@@ -226,12 +226,12 @@ struct
       | Eq | Gt -> true
 	
 
-end*)
+end
 
 
 
 
-module Make(Val: Data) =
+(*module Make(Val: Data) =
 struct
   (* None is emptyset *)
   type t = Val.t Map.t list
@@ -383,4 +383,4 @@ struct
     ) sl
 	      
 
-end
+end*)
