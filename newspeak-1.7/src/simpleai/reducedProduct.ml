@@ -19,11 +19,15 @@ let implies ((i, p), cmp, i32) =
 
 let reduce (i, p) =
   match (i, p) with
-  | _, P.Top -> (i, p)
+  | I.Val (a, b), P.Top ->
+    if a = b then
+      (i, P.singleton a)
+    else
+      (i, p)
   | I.Val (a, b), _ ->
     let a = if P.singleton a <> p then Int32.add a Int32.one else a in
     let b = if P.singleton b <> p then Int32.sub b Int32.one else b in
-    I.Val (a, b), p
+    (I.Val (a, b), p)
   | _ -> (i, p)
 
 let join (i1, p1) (i2, p2) = reduce (I.join i1 i2, P.join p1 p2)
@@ -49,4 +53,3 @@ let is_safe_div = is_safe_f I.is_safe_div
 let is_safe_mod = is_safe_f I.is_safe_mod
 
 let guard bop (i1, p1) (i2, p2) = reduce (I.guard bop i1 i2, P.guard bop p1 p2)
-

@@ -6,7 +6,7 @@ type t =
 
 let lt x y = Int32.compare x y < 0
 let lte x y = Int32.compare x y <= 0
-let eq x y = Int32.compare x y = 0
+(*let eq x y = Int32.compare x y = 0*)
 let gt x y = Int32.compare x y > 0
 let gte x y = Int32.compare x y >= 0
 let min x y = if lt x y then x else y
@@ -49,16 +49,12 @@ let join x y =
   | _ -> Top
 
 let widen x y =
-  let res =
   match x, y with
   | Val (a, b), Val (c, d) ->
     let x = if lte a c then a else Int32.min_int in
     let y = if gte b d then b else Int32.max_int in
     normalize (Val (x, y))
   | _ -> Top
-  in
-  (*Printf.printf "Interval widening %s\nand %s\n= %s\n" (to_string x) (to_string y) (to_string res);*)
-  res
 
 let implies = function
   | Val (x, y), Simple.Equals, i32 -> x = i32 && y = i32

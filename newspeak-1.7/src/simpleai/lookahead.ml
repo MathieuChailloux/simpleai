@@ -20,18 +20,12 @@ struct
   let join (m1, p1) (m2, p2) = Val.join m1 m2, Val.join p1 p2
 
   let widen (m1, p1) (m2, p2) =
-    let res =
-      if contains (m1, p1) (m2, p2) then
-	(m1, p1)
-      else if Val.contains p1 p2 then
-	let res = (p2, p2) in
-	Printf.printf "Stabilized value = %s\n" (Val.to_string p2);
-	res
-      else
-	(Val.join m1 m2, Val.widen p1 p2)
-    in
-    (*Printf.printf "Lookahead widening %s\nand %s\n= %s\n" (to_string (m1, p1)) (to_string (m2, p2)) (to_string res);*)
-    res
+    if contains (m1, p1) (m2, p2) then
+      (m1, p1)
+    else if Val.contains p1 p2 then
+      (p2, p2)
+    else
+      (Val.join m1 m2, Val.widen p1 p2)
 
   let implies ((_, p), op, i) = Val.implies (p, op, i)
 

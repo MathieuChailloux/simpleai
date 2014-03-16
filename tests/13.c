@@ -10,7 +10,7 @@
 /* Dans ces exemples, des techniques de widening intelligentes     */
 /* seront necessaires pour obtenir des resultats precis.           */
 /*******************************************************************/
-/* --unroll 100 c'est cool mais ça fait beaucoup d'unroll :) */
+/* --unroll 1 */
 
 int i, j, k, l, m;
 

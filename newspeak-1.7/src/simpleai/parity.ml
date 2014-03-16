@@ -2,6 +2,11 @@ type t = Even | Odd | Top
 
 let universe = Top
 
+let to_string = function
+  | Even -> "Pair"
+  | Odd -> "Impair"
+  | Top -> "?"
+
 let singleton =
   let two = Int32.add Int32.one Int32.one in
   fun i32 -> if Int32.rem i32 two = Int32.zero then Even else Odd
@@ -63,10 +68,5 @@ let guard op cond x =
   match op, x with
   | UnrelState.EQ, Top -> cond
   | UnrelState.EQ, _ -> if x <> cond then raise UnrelState.Emptyset else x
-  | _, Top -> Top
+  | UnrelState.NEQ, _ -> if x = cond then raise UnrelState.Emptyset else x
   | _ -> x
-
-let to_string = function
-  | Even -> "Pair"
-  | Odd -> "Impair"
-  | Top -> "?"

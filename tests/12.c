@@ -10,7 +10,6 @@
 /* Dans ces exemples, des techniques de widening intelligentes     */
 /* seront nécessaires pour obtenir des résultats précis.           */
 /*******************************************************************/
-/* --delay 1 */
 
 int i, x, y, n;
 
